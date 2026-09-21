@@ -2167,6 +2167,7 @@
         "cancel": "Cancel provider sync",
         "done": "CC Switch sync finished: {{created}} added, {{updated}} updated",
         "doneWithPending": "CC Switch sync finished: {{created}} added, {{updated}} updated. Models for {{pending}} connection(s) need discovery.",
+        "failedCount": "{{count}} connection(s) could not be synced. Retry to try them again.",
         "notFound": "CC Switch database was not found. Open CC Switch once and try again.",
         "empty": "No compatible CC Switch provider connections were found.",
         "failed": "CC Switch sync failed. Check the source app and try again."

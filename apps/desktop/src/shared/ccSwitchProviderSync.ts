@@ -29,6 +29,7 @@ export type CcSwitchProviderSyncResult =
       created: number;
       updated: number;
       modelsPending: number;
+      failed: number;
       providerIds: string[];
     }
   | Extract<CustomProviderUpdateResult, { ok: false }>;

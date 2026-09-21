@@ -2166,6 +2166,7 @@
         "cancel": "取消供应商同步",
         "done": "CC Switch 同步完成：新增 {{created}} 个，更新 {{updated}} 个",
         "doneWithPending": "CC Switch 同步完成：新增 {{created}} 个，更新 {{updated}} 个；{{pending}} 个连接尚未发现模型",
+        "failedCount": "有 {{count}} 个连接未能同步，请重试",
         "notFound": "未找到 CC Switch 数据库。请先打开 CC Switch，再重试。",
         "empty": "没有找到可导入的 CC Switch 供应商连接。",
         "failed": "CC Switch 同步失败，请检查源应用后重试。"

@@ -2166,6 +2166,7 @@
         "cancel": "同期をキャンセル",
         "done": "CC Switch の同期完了：{{created}} 件を追加、{{updated}} 件を更新",
         "doneWithPending": "CC Switch の同期完了：{{created}} 件を追加、{{updated}} 件を更新。{{pending}} 件の接続はモデル検出が必要です",
+        "failedCount": "{{count}} 件の接続を同期できませんでした。再試行してください",
         "notFound": "CC Switch のデータベースが見つかりません。CC Switch を一度開いてから再試行してください。",
         "empty": "対応する CC Switch プロバイダー接続が見つかりません。",
         "failed": "CC Switch の同期に失敗しました。ソースアプリを確認して再試行してください。"

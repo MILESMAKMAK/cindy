@@ -3401,6 +3401,37 @@ describe('provider:cc-switch:* handlers', () => {
     await expect(harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_CONFIRM, '00000000-0000-4000-8000-000000000000'))
       .rejects.toThrow(/NOT_FOUND/);
   });
+
+  it('reports partial success when a later credential write fails', async () => {
+    mountDb();
+    const candidate = (id: string) => ({
+      sourceApp: 'claude' as const,
+      agent: 'claude-code' as const,
+      config: {
+        id,
+        name: id,
+        runtimes: {
+          'claude-code': {
+            baseUrl: 'https://fixture.example/v1',
+            wireProtocol: 'anthropic-messages' as const,
+            models: [{ id: 'fixture-model', name: 'Fixture model' }],
+          },
+        },
+      },
+      keys: { 'claude-code': 'fixture-key' },
+    });
+    const harness = new IpcHarness();
+    const deps = makeDeps({
+      readCcSwitchProviders: () => ({ candidates: [candidate('first'), candidate('second')], skippedCount: 0 }),
+      storeCustomProviderKey: vi.fn((providerId) => providerId !== 'second'),
+    });
+    registerProviderHandlers(harness, deps);
+    const preview = await harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_PREVIEW) as { importId: string };
+    await expect(harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_CONFIRM, preview.importId))
+      .resolves.toMatchObject({ ok: true, created: 1, failed: 1 });
+    expect(await getCustomProvider('first')).not.toBeNull();
+    expect(await getCustomProvider('second')).toBeNull();
+  });
 });
 
 describe('model price override handlers', () => {

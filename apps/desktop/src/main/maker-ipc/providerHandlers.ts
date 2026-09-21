@@ -2244,35 +2244,45 @@ export function registerProviderHandlers(
       let created = 0;
       let updated = 0;
       let modelsPending = 0;
+      let failed = 0;
       const providerIds: string[] = [];
       const options = interrupt === true
         ? { source: 'manual-settings' as const, codexImageGenerationRestartPolicy: 'interrupt' as const }
         : { source: 'manual-settings' as const };
 
       for (const candidate of draft.candidates) {
-        assertProviderMutationOwner(draft.owner);
-        await discoverCcSwitchModels(candidate);
-        if ((candidate.config.runtimes[candidate.agent]?.models.length ?? 0) === 0) {
-          modelsPending += 1;
+        try {
+          assertProviderMutationOwner(draft.owner);
+          await discoverCcSwitchModels(candidate);
+          if ((candidate.config.runtimes[candidate.agent]?.models.length ?? 0) === 0) {
+            modelsPending += 1;
+          }
+          const exists = await customProviderExists(candidate.config.id);
+          assertProviderMutationOwner(draft.owner);
+          const result = exists
+            ? await updateProviderFromInput(
+                event,
+                candidate.config,
+                candidate.keys,
+                options,
+                (current) => mergeCcSwitchConfig(current, candidate.config, candidate.agent),
+              )
+            : await createProviderFromInput(event, candidate.config, candidate.keys, options);
+          if (!result.ok) return result;
+          if (exists) updated += 1;
+          else created += 1;
+          providerIds.push(candidate.config.id);
+        } catch (error) {
+          assertProviderMutationOwner(draft.owner);
+          failed += 1;
+          log.warn('CC Switch provider sync skipped a failed candidate', {
+            providerId: candidate.config.id,
+            error: error instanceof Error ? error.name : 'unknown',
+          });
         }
-        const exists = await customProviderExists(candidate.config.id);
-        assertProviderMutationOwner(draft.owner);
-        const result = exists
-          ? await updateProviderFromInput(
-              event,
-              candidate.config,
-              candidate.keys,
-              options,
-              (current) => mergeCcSwitchConfig(current, candidate.config, candidate.agent),
-            )
-          : await createProviderFromInput(event, candidate.config, candidate.keys, options);
-        if (!result.ok) return result;
-        if (exists) updated += 1;
-        else created += 1;
-        providerIds.push(candidate.config.id);
       }
       ccSwitchDrafts.delete(importId);
-      return { ok: true, created, updated, modelsPending, providerIds };
+      return { ok: true, created, updated, modelsPending, failed, providerIds };
     },
   );
 

@@ -2207,6 +2207,9 @@ export function ProvidersSection() {
           },
         ),
       );
+      if (result.failed > 0) {
+        toast.error(t('settings.providers.ccSwitch.failedCount', { count: result.failed }));
+      }
       await refetch();
     } catch (error) {
       const code = extractIpcError(error)?.code;
