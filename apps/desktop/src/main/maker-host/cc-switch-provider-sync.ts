@@ -71,7 +71,9 @@ function safeBaseUrl(value: unknown): string | null {
     if (
       (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') ||
       parsed.username ||
-      parsed.password
+      parsed.password ||
+      parsed.search ||
+      parsed.hash
     ) {
       return null;
     }

@@ -120,4 +120,25 @@ describe('parseCcSwitchProviderRows', () => {
     expect(result.candidates).toEqual([]);
     expect(result.skippedCount).toBe(2);
   });
+
+  it('rejects URLs carrying query or fragment data', () => {
+    const result = parseCcSwitchProviderRows([
+      {
+        id: 'query-secret',
+        app_type: 'claude',
+        name: 'Query secret',
+        settings_config: JSON.stringify({
+          env: {
+            ANTHROPIC_BASE_URL: 'https://api.example.test/v1?api_key=secret',
+            ANTHROPIC_AUTH_TOKEN: 'fixture-key',
+          },
+        }),
+        meta: '{}',
+      },
+    ]);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.skippedCount).toBe(1);
+    expect(JSON.stringify(result)).not.toContain('secret');
+  });
 });
