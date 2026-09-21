@@ -5251,6 +5251,13 @@ interface ElectronAPI {
       keys: Partial<Record<'claude-code' | 'codex' | 'pi', string>>,
       options?: CustomProviderUpdateOptions,
     ) => Promise<CustomProviderUpdateResult>;
+    previewCcSwitchProviders: () => Promise<
+      import('../shared/ccSwitchProviderSync').CcSwitchProviderSyncPreview
+    >;
+    confirmCcSwitchProviders: (
+      importId: string,
+      interrupt?: true,
+    ) => Promise<import('../shared/ccSwitchProviderSync').CcSwitchProviderSyncResult>;
     disconnectCustomProvider: (
       providerId: string,
       ownerScope?: { dataOwnerId: string | null; ownerGeneration: number },

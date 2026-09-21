@@ -3341,6 +3341,68 @@ describe('provider:custom:* CRUD handlers', () => {
   });
 });
 
+describe('provider:cc-switch:* handlers', () => {
+  it('previews compatible rows and only writes after confirmation', async () => {
+    mountDb();
+    const harness = new IpcHarness();
+    const deps = makeDeps({
+      readCcSwitchProviders: () => ({
+        skippedCount: 0,
+        candidates: [
+          {
+            sourceApp: 'claude',
+            agent: 'claude-code',
+            config: {
+              id: 'ccs_claude_fixture',
+              name: 'CC Switch fixture',
+              runtimes: {
+                'claude-code': {
+                  baseUrl: 'https://fixture.example/v1',
+                  wireProtocol: 'anthropic-messages',
+                  models: [{ id: 'fixture-model', name: 'Fixture model' }],
+                },
+              },
+            },
+            keys: { 'claude-code': 'fixture-key' },
+          },
+        ],
+      }),
+    });
+    registerProviderHandlers(harness, deps);
+
+    const preview = await harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_PREVIEW) as {
+      importId: string;
+      items: { action: string; hasApiKey: boolean }[];
+    };
+    expect(preview.items).toHaveLength(1);
+    expect(preview.items[0]).toMatchObject({ action: 'create', hasApiKey: true });
+    expect(await getCustomProvider('ccs_claude_fixture')).toBeNull();
+
+    await expect(
+      harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_CONFIRM, preview.importId),
+    ).resolves.toMatchObject({ ok: true, created: 1, updated: 0 });
+    expect(await getCustomProvider('ccs_claude_fixture')).toMatchObject({
+      name: 'CC Switch fixture',
+    });
+    expect(deps.storeCustomProviderKey).toHaveBeenCalledWith(
+      'ccs_claude_fixture',
+      'claude-code',
+      'fixture-key',
+    );
+  });
+
+  it('rejects a second confirmation for an expired or consumed preview', async () => {
+    mountDb();
+    const harness = new IpcHarness();
+    registerProviderHandlers(harness, makeDeps({
+      readCcSwitchProviders: () => ({ candidates: [], skippedCount: 1 }),
+    }));
+    await expect(harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_PREVIEW)).rejects.toThrow(/INVALID_PARAMS/);
+    await expect(harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_CONFIRM, '00000000-0000-4000-8000-000000000000'))
+      .rejects.toThrow(/NOT_FOUND/);
+  });
+});
+
 describe('model price override handlers', () => {
   const target = {
     providerId: 'openrouter',
