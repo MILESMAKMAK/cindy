@@ -241,10 +241,6 @@ import {
   setUpdateAutoRelaunchBusyProbe,
 } from './updateService';
 import {
-  isWindowsUpdateLockSharingViolation,
-  shouldKeepWaitingForWindowsUpdateLock,
-} from './updateLockWait';
-import {
   createUpdatePresentationRecoveryController,
   decideUpdateRelaunchBusyTransition,
   hasUpdateRelaunchBusyActivity,
@@ -884,7 +880,8 @@ import { createChatEmbeddingSettingsWatcher } from './maker-host/chat-embedding-
 import {
   readGitSafetySettingsState,
   resetGitSafetySettings,
-  writeGitSafetyAutoSnapshotEnabled,
+  writeGitSafetyMode,
+  type GitSafetyMode,
 } from './maker-host/git-safety-settings-store.js';
 import {
   CHAT_EMBED_MODEL_ID,
@@ -2731,46 +2728,8 @@ if (started) {
       Atomics.wait(lockWait, 0, 0, pollMs);
       continue;
     }
-    const holderPid = readLockPid();
-    const holderAlive = holderPid !== null && pidAlive(holderPid);
-    const elapsedMs = Date.now() - start;
-    if (
-      shouldKeepWaitingForWindowsUpdateLock({
-        lockExists: true,
-        elapsedMs,
-        maxWaitMs,
-        holderPid,
-        holderAlive,
-        unlinkFailed: false,
-        sharingViolation: false,
-      })
-    ) {
-      Atomics.wait(lockWait, 0, 0, pollMs);
-      continue;
-    }
-    let unlinkFailed = false;
-    let sharingViolation = false;
-    try {
-      fs.unlinkSync(lockPath);
-    } catch (error) {
-      unlinkFailed = fs.existsSync(lockPath);
-      sharingViolation = unlinkFailed && isWindowsUpdateLockSharingViolation(error);
-    }
-    if (
-      shouldKeepWaitingForWindowsUpdateLock({
-        lockExists: fs.existsSync(lockPath),
-        elapsedMs,
-        maxWaitMs,
-        holderPid,
-        holderAlive,
-        unlinkFailed,
-        sharingViolation,
-      })
-    ) {
-      Atomics.wait(lockWait, 0, 0, pollMs);
-      continue;
-    }
-    break;
+    if (Date.now() - start >= maxWaitMs) break;
+    Atomics.wait(lockWait, 0, 0, pollMs);
   }
   // If still locked after the wait, proceed anyway (stale lock).
   // 锁已不存在(更新脚本正常清掉)同样算已清——等锁实例必须走
@@ -5053,11 +5012,12 @@ const registerIpcHandlers = () => {
   ipcMain.handle(MAKER_IPC_INVOKE.GIT_SAFETY_GET, async () => {
     return gitSafetyWire();
   });
-  ipcMain.handle(MAKER_IPC_INVOKE.GIT_SAFETY_SET, async (_e, enabled: unknown) => {
-    if (typeof enabled !== 'boolean') {
-      throwIpcError('INVALID_PARAMS', 'git safety enabled required (boolean)');
+  ipcMain.handle(MAKER_IPC_INVOKE.GIT_SAFETY_SET, async (_e, mode: unknown) => {
+    if (typeof mode === 'boolean') mode = mode ? 'all-projects' : 'off';
+    if (mode !== 'off' && mode !== 'existing-git' && mode !== 'all-projects') {
+      throwIpcError('INVALID_PARAMS', 'git safety mode required');
     }
-    writeGitSafetyAutoSnapshotEnabled(enabled);
+    writeGitSafetyMode(mode as GitSafetyMode);
     return gitSafetyWire();
   });
   ipcMain.handle(MAKER_IPC_INVOKE.GIT_SAFETY_RESET, async () => {
@@ -7632,10 +7592,10 @@ const registerIpcHandlers = () => {
       }
     },
   );
-  ipcMain.handle('app:cindy-make-history-build', async (event) => {
+  ipcMain.handle('app:cindy-make-history-build', async (event, selection: unknown) => {
     assertTrustedAppRendererEvent(event);
     try {
-      return await generateHistoryPersonalVersion();
+      return await generateHistoryPersonalVersion(selection);
     } catch {
       throwIpcError('PRECONDITION_FAILED', 'unavailable');
     }
@@ -10244,8 +10204,11 @@ function chatEmbeddingWire() {
 function gitSafetyWire() {
   const state = readGitSafetySettingsState();
   return {
+    mode: state.value.mode,
     autoSnapshotEnabled: state.value.autoSnapshotEnabled,
+    autoInitProjectGit: state.value.autoInitProjectGit,
     isCustomized: state.isCustomized,
+    defaultMode: state.defaults.mode,
     defaultAutoSnapshotEnabled: state.defaults.autoSnapshotEnabled,
   };
 }
