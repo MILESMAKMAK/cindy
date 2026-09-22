@@ -17,6 +17,7 @@ import Database from 'better-sqlite3';
 import { parse as parseToml } from 'smol-toml';
 
 import type { CcSwitchSourceApp } from '../../shared/ccSwitchProviderSync.js';
+import { resolveBetterSqliteNativeBinding } from '../localDb/betterSqliteFactory.js';
 
 const MAX_ROWS = 256;
 const MAX_JSON_BYTES = 1024 * 1024;
@@ -357,7 +358,12 @@ export function parseCcSwitchProviderRows(
 }
 
 export function readCcSwitchProviderCandidates(dbPath: string): CcSwitchProviderReadResult {
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  const nativeBinding = resolveBetterSqliteNativeBinding();
+  const db = new Database(dbPath, {
+    readonly: true,
+    fileMustExist: true,
+    ...(nativeBinding ? { nativeBinding } : {}),
+  });
   try {
     db.pragma('query_only = ON');
     db.pragma('busy_timeout = 1000');
@@ -370,12 +376,14 @@ export function readCcSwitchProviderCandidates(dbPath: string): CcSwitchProvider
       if (!columns.has(required)) throw new Error('unsupported CC Switch provider database schema');
     }
     const providerType = columns.has('provider_type') ? 'provider_type' : 'NULL AS provider_type';
+    const sortIndex = columns.has('sort_index') ? 'sort_index' : 'NULL';
+    const createdAt = columns.has('created_at') ? 'created_at' : 'NULL';
     const rows = db
       .prepare(
         `SELECT id, app_type, name, settings_config, meta, ${providerType}
          FROM providers
          WHERE app_type IN ('claude', 'codex', 'pi')
-         ORDER BY app_type, sort_index, created_at, id
+         ORDER BY app_type, ${sortIndex}, ${createdAt}, id
          LIMIT ${MAX_ROWS + 1}`,
       )
       .all() as CcSwitchProviderRow[];

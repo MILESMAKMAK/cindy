@@ -2167,7 +2167,7 @@
         "done": "CC Switch 同步完成：新增 {{created}} 個，更新 {{updated}} 個",
         "doneWithPending": "CC Switch 同步完成：新增 {{created}} 個，更新 {{updated}} 個；{{pending}} 個連線尚未發現模型",
         "failedCount": "有 {{count}} 個連線未能同步，請重試",
-        "notFound": "找不到 CC Switch 資料庫。請先開啟 CC Switch，再重試。",
+        "notFound": "無法讀取 CC Switch 資料庫。請先開啟 CC Switch，檢查檔案後再試一次。",
         "empty": "找不到可匯入的 CC Switch 供應商連線。",
         "failed": "CC Switch 同步失敗，請檢查來源應用程式後重試。"
       },

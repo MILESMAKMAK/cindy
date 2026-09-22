@@ -3389,6 +3389,17 @@ describe('provider:cc-switch:* handlers', () => {
       'claude-code',
       'fixture-key',
     );
+
+    const repeatPreview = await harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_PREVIEW) as {
+      importId: string;
+      items: { action: string }[];
+    };
+    expect(repeatPreview.items).toHaveLength(1);
+    expect(repeatPreview.items[0]).toMatchObject({ action: 'update' });
+    await expect(
+      harness.invoke(MAKER_INVOKE.PROVIDER_CC_SWITCH_CONFIRM, repeatPreview.importId),
+    ).resolves.toMatchObject({ ok: true, created: 0, updated: 1 });
+    expect(await listCustomProviders()).toHaveLength(1);
   });
 
   it('rejects a second confirmation for an expired or consumed preview', async () => {
